@@ -1,0 +1,60 @@
+# pulling official python image
+FROM python:3.9.5-slim-buster as builder
+
+# setting our work directory
+WORKDIR /usr/src/app
+
+# setting environment variables
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# installing system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends gcc
+
+# upgrading pip and copying our local project to container
+RUN pip install --upgrade pip
+COPY . /usr/src/app/
+
+# installing python dependencies
+COPY ./requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /usr/src/app/wheels -r requirements.txt
+
+# HERE WE USE MULTI-STAGE DOCKERFILE 
+
+# pulling official base image
+FROM python:3.9.5-slim-buster
+
+# creating directory for the app user
+RUN mkdir -p /home/app
+
+# creating the app user
+RUN addgroup --system app && adduser --system --group app
+
+# creating the appropriate directories
+ENV HOME=/home/app
+ENV APP_HOME=/home/app/web
+RUN mkdir $APP_HOME
+WORKDIR $APP_HOME
+
+# installing dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends netcat
+COPY --from=builder /usr/src/app/wheels /wheels
+COPY --from=builder /usr/src/app/requirements.txt .
+RUN pip install --upgrade pip
+RUN pip install --no-cache /wheels/*
+
+# copying entrypoint.sh
+COPY ./entrypoint.sh $APP_HOME
+
+# copying project
+COPY . $APP_HOME
+
+# chown all the files to the app user
+RUN chown -R app:app $APP_HOME
+
+# changing to the app user
+USER app
+
+# running entrypoint.sh
+ENTRYPOINT ["/home/app/web/entrypoint.sh"]

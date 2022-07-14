@@ -1,0 +1,31 @@
+version: '3.8'
+
+# defining two services: web (Flask application) and db (Postgresql database) for production
+services:
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.prod
+    # using this command to run gunicorn server
+    command: gunicorn --bind 0.0.0.0:5000 manage:app
+    # defining inner and outer ports
+    ports:
+      - 5000:5000
+    # searching for a file with environment variables
+    env_file:
+      - ./.env.prod
+    # noting that db should be started first
+    depends_on:
+      - db
+
+  db:
+    image: postgres:latest
+    # creating a volume
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data/
+    # searching for a file with environment variables
+    env_file:
+      - ./.env.prod.db
+
+volumes:
+  postgres_data_prod:

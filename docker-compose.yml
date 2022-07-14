@@ -1,0 +1,33 @@
+version: '3.8'
+
+# defining two services: web (Flask application) and db (Postgresql database) for development usage
+services:
+  web:
+    build: ./web
+    # using this command to run flask server
+    command: python manage.py run -h 0.0.0.0
+    # creating a volume
+    volumes:
+      - ./web/:/usr/src/app/
+    # defining inner and outer ports
+    ports:
+      - 5000:5000
+    # searching for a file with environment variables
+    env_file:
+      - ./.env.dev
+    # noting that db should be started first
+    depends_on:
+      - db
+  db:
+    image: postgres:latest
+    # creating a volume
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    # setting environment variables for postgresql
+    environment:
+      - POSTGRES_USER=abb_user
+      - POSTGRES_PASSWORD=abb_password
+      - POSTGRES_DB=abb_db
+
+volumes:
+  postgres_data:
